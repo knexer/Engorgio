@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using AssemblyCSharp;
 
 public class MeshSpawner : MonoBehaviour
 {
@@ -12,29 +13,40 @@ public class MeshSpawner : MonoBehaviour
     [SerializeField] private float growthFactor = 1.05f;
     [SerializeField] private Mesh sphereMesh;
 
-	// Use this for initialization
-	void Awake ()
-	{
-        MakeCube();
-	}
+    // Use this for initialization
+    void Awake ()
+    {
+        MakeSphere();
+    }
 
     private void MakeSphere()
     {
-        // We have this convenient sphereMesh that is already mostly sphereish and should be good enough
+        // Ode to My Code, by Steven Weiss
+        DedupedMesh mesh = new DedupedMesh(sphereMesh);
+        Rigidbody[] nodes = new Rigidbody[mesh.vertices.Length];
 
-        // Make the outer skin:
-        // TODO Spawn a node at each vertex of the sphere
-        // Connect it to each of its neighbors (that have already been spawned).  Now you have the outer skin.
+        // Some have said code is less science than art
+        for (int i = 0; i < mesh.vertices.Length; i++) {
+            // Code can be beautiful, elegant, smart
+            nodes [i] = Instantiate (MeshNode, gameObject.transform);
+            // This is not that code.
+            nodes [i].transform.position = mesh.vertices [i] * 3f;
+        }
 
-        // Make the inner skin:
-        // For each triangle in the mesh, create another node at the middle of the face
-        // (but inset towards the center of the sphere by approximately the distance between adjacent nodes)
-        // Connect it to the inner skin nodes for each neighboring face
-        // Connect it to the nodes for the vertices on the face this was spawned from
+        // In some of your source, no doubt you've been proud
+        for (int i = 0; i < sphereMesh.triangles.Length; i += 3) {
+            // You'd happily share it, read it aloud
+            AddSpringJoint(nodes[mesh.triangles[i + 1]], nodes[mesh.triangles[i + 0]]);
+            // No doubt your professors would all have been wowed
+            AddSpringJoint(nodes[mesh.triangles[i + 2]], nodes[mesh.triangles[i + 0]]);
+            // This code is not that code.
+            AddSpringJoint(nodes[mesh.triangles[i + 2]], nodes[mesh.triangles[i + 1]]);
+        }
 
-        // Add the center node and connect it to all the inner skin nodes.
-        // (We may need a different internal structure to make non-convex blobbing possible but this should be OK for now)
-        // (These connections probably will need different spring configurations)
+        nodes[0].useGravity = true;            // And yet there is something there in its refrain
+        nodes[0].mass = 50f;                // For problems were solved, and demons were slain
+        Debug.Log("Created " + nodes.Length // And sure it's not great, I'll be quick to admit
+                  + " nodes from a mesh."); // But I still love this code, even if it is shit.
     }
 
     private void MakeCube()
@@ -84,11 +96,11 @@ public class MeshSpawner : MonoBehaviour
     }
 
     // Update is called once per frame
-	void Update ()
-	{
-	    foreach (SpringJoint joint in GetComponentsInChildren<SpringJoint>())
-	    {
-	        joint.connectedAnchor *= growthFactor;
-	    }
-	}
+    void Update ()
+    {
+        foreach (SpringJoint joint in GetComponentsInChildren<SpringJoint>())
+        {
+            joint.connectedAnchor *= growthFactor;
+        }
+    }
 }
